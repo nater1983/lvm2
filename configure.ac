@@ -1236,10 +1236,27 @@ AC_ARG_ENABLE(notify-dbus,
 AS_IF([test "$NOTIFYDBUS_SUPPORT" = "maybe"],
       [AS_IF([test "$BUILD_LVMDBUSD" = "yes"], [NOTIFYDBUS_SUPPORT="yes"], [NOTIFYDBUS_SUPPORT="no"])])
 
+# Check for systemd or elogind
 AS_IF([test "$NOTIFYDBUS_SUPPORT" = "yes"],
-      [AS_IF([test "$SYSTEMD_MIN_VERSION" -lt 221],
-	    [AC_MSG_ERROR([--enable-notify-dbus requires systemd >= 221. (--with-systemd=$with_systemd)])])
+      [AS_IF([test "$SYSTEMD_MIN_VERSION" -lt 221 -a "$ELOGIND_SUPPORT" != "yes"],
+            [AC_MSG_ERROR([--enable-notify-dbus requires systemd >= 221 or elogind support. (--with-systemd=$with_systemd --with-elogind=$with_elogind)])])
        AC_DEFINE([NOTIFYDBUS_SUPPORT], 1, [Define to 1 to include code that uses dbus notification.])])
+
+# Check if elogind is available
+AS_IF([test "$with_elogind" != "no"],
+      [PKG_CHECK_MODULES([ELOGIND], [elogind >= 1.5], [], [AC_MSG_WARN([Elogind not found. You may want to install elogind or disable elogind support.])])])
+
+# Define elogind support
+AC_ARG_WITH([elogind],
+    [AS_HELP_STRING([--with-elogind], [Enable elogind support])],
+    [with_elogind=$withval],
+    [with_elogind=no])
+
+# Include elogind if requested
+AS_IF([test "$with_elogind" = "yes"],
+      [AC_CHECK_LIB([elogind], [main], [], [AC_MSG_ERROR([elogind library not found])])
+       PKG_CHECK_MODULES([ELOGIND], [elogind], [], [AC_MSG_ERROR([Elogind package not found])])
+       AC_DEFINE([ELOGIND_SUPPORT], 1, [Define to 1 to include code that uses elogind.])])
 
 AC_MSG_CHECKING([whether to build notifydbus])
 AC_MSG_RESULT([$NOTIFYDBUS_SUPPORT])
